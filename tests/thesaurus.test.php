@@ -25,7 +25,7 @@ class thesaurus_test extends InforMEABaseTest {
         $voc_source = $this->create_voc_source();
 
         $d1 = array(
-            'term' => 'test',
+            'term' => " test\n",
             'description' => 'description',
             'reference_url' => 'reference_url',
             'tag' => 'test',
@@ -73,5 +73,16 @@ class thesaurus_test extends InforMEABaseTest {
     function test_create_term_invalid_id_source() {
         $ob = new Thesaurus();
         $ob->create_term(array('term' => 'test'));
+    }
+
+
+    function test_get_source_by_name() {
+        $this->create_voc_source();
+
+        $ob = new Thesaurus();
+        $src = $ob->get_source_by_name('tEsT');
+        $this->assertNotNull($src);
+        $this->assertEquals(1, $src->id);
+        $this->assertEquals('TEST', $src->name);
     }
 }

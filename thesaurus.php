@@ -1503,7 +1503,24 @@ class Thesaurus extends imea_page_base_page {
             $term = preg_replace('/\s+/', ' ', $term); // Remove unholy characters (multi-spaces, tab, newline etc.)
             $term = trim($term);
             $term = strtolower($term);
-            return $wpdb->get_row($wpdb->prepare('SELECT * FROM voc_concept WHERE term = %s', $term));
+            // Find the term and choose the one with the oldest id_source (InforMEA)
+            return $wpdb->get_row($wpdb->prepare('SELECT * FROM voc_concept WHERE LOWER(term) = %s ORDER BY id_source ASC LIMIT 1', $term));
+        }
+        return NULL;
+    }
+
+
+    /**
+     * Find source by the name
+     *
+     * @param string $name Source name
+     * @return object Source or NULL if not found
+     */
+    function get_source_by_name($name) {
+        global $wpdb;
+        if(!empty($name)) {
+            $term = strtolower(trim($name));
+            return $wpdb->get_row($wpdb->prepare('SELECT * FROM voc_source WHERE LOWER(name) = %s LIMIT 1', $term));
         }
         return NULL;
     }
@@ -1548,6 +1565,8 @@ class Thesaurus extends imea_page_base_page {
         if(empty($array['id_source']) || !is_numeric($array['id_source'])) {
             throw new InforMEAException(sprintf('Must specify id_source (%s)', print_r($array, TRUE)));
         }
+
+        $array['term'] = trim(preg_replace('/\s+/', ' ', $array['term']));
 
 		$this->success = false;
         $rec_created = date('Y-m-d H:i:s', strtotime('now'));
