@@ -23,8 +23,6 @@ add_action('wp_ajax_generate_terms_tree_public', array('Thesaurus', '_inner_gene
 add_action('wp_ajax_nopriv_generate_terms_tree_public', array('Thesaurus', '_inner_generate_terms_tree'));
 
 // External dependency - http://svn.eaudeweb.ro/informea/trunk/www/wp-content/plugins/informea/pages/page_base.class.php
-require_once (WP_PLUGIN_DIR . '/informea/pages/page_base.class.php');
-
 class Thesaurus extends imea_page_base_page {
 
 	private $id_term = NULL;
@@ -1492,4 +1490,82 @@ class Thesaurus extends imea_page_base_page {
 	}
 
 
+    /**
+     *
+     * Find term by its name.
+     *
+     * @param string $term Term, ex. agriculture
+     * @return object Term object or NULL if not found
+     */
+    function find_term($term) {
+        global $wpdb;
+        if(!empty($term)) {
+            $term = preg_replace('/\s+/', ' ', $term); // Remove unholy characters (multi-spaces, tab, newline etc.)
+            $term = trim($term);
+            $term = strtolower($term);
+            return $wpdb->get_row($wpdb->prepare('SELECT * FROM voc_concept WHERE term = %s', $term));
+        }
+        return NULL;
+    }
+
+
+    /**
+     * Insert new term into database.
+     * This method does not open a transaction.
+     *
+     * @param array $array Array with term properties (columns).
+     * Supported keys:
+     * - term
+     * - description
+     * - reference_url
+     * - tag
+     * - id_source
+     * - top_concept
+     * - popularity
+     * - order
+     * - substantive
+     * - geg_tools_url
+     *
+     * Internal fields - Set by this method
+     * - rec_created
+     * - rec_author
+     *
+     * Internal fields - Set to NULL by this method
+     * - rec_updated
+     * - rec_updated_author
+     *
+     * @return object term object or FALSE if error occurred
+     * @throws InforMEAException If validation error occurrs (no term or id_source)
+     */
+    function create_term($array) {
+		global $wpdb;
+		global $current_user;
+
+        if(empty($array['term'])) {
+            throw new InforMEAException(sprintf('Term has no value (%s)', print_r($array, TRUE)));
+        }
+
+        if(empty($array['id_source']) || !is_numeric($array['id_source'])) {
+            throw new InforMEAException(sprintf('Must specify id_source (%s)', print_r($array, TRUE)));
+        }
+
+		$this->success = false;
+        $rec_created = date('Y-m-d H:i:s', strtotime('now'));
+        $user = $current_user->user_login;
+        $data = array_merge(array('rec_created' => $rec_created, 'rec_author' => $user), $array);
+
+        $wpdb->insert('voc_concept', $data);
+        $this->check_db_error();
+        $id_term = $wpdb->insert_id;
+
+        // Log the action
+        $term = $this->get_term($id_term);
+        if(!$term) {
+            throw new InforMEAException(sprintf('Term was not added into the database (%s)', print_r($array, TRUE)));
+        }
+        $url = 	sprintf('%s/terms/%d', get_bloginfo('url'), $id_term);
+        $this->add_activity_log('insert', 'vocabulary', "Created term '{$term->term}'", null, $url);
+        $this->success = true;
+        return $term;
+    }
 }
