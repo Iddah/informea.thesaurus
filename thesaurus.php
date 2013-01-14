@@ -32,11 +32,73 @@ class Thesaurus extends imea_page_base_page {
 
 	function __construct($id_term = null, $arr_parameters = array()) {
 		parent::__construct($arr_parameters);
-		$this->id_term = $id_term;
-		if($id_term !== null) {
+		if(!empty($id_term)) {
+			$this->id_term = $id_term;
 			$this->term = $this->get_term($id_term);
 			$this->_get_details();
 		}
+	}
+
+
+	/**
+	 * @todo Optimize by adding a new column slug to voc_concept
+	 */
+	function get_term_id_by_slug($slug) {
+		global $wpdb;
+
+		$terms = $wpdb->get_results('SELECT id, term FROM voc_concept', OBJECT_K);
+		foreach($terms as $id => $term) {
+			$tmp = slugify($term->term);
+			if($tmp == $slug) {
+				return $id;
+			}
+		}
+		return NULL;
+	}
+
+
+	function get_page_title() {
+		if($this->term) {
+			$theme = get_request_variable('theme');
+			if(!empty($theme)) {
+				return sprintf(__('Theme: %s', 'imea'), $this->term->term);
+			} else {
+				return $this->term->term;
+			}
+		} else {
+			return __('Themes list', 'imea');
+		}
+	}
+
+
+	function get_breadcrumbtrail() {
+		global $post, $page_data, $tab;
+		$theme = get_request_variable('theme');
+		if(!empty($theme)) {
+			$ret = array(array('url' => get_permalink(), 'label' => $post->post_title));
+			$ret = array(array('url' => get_permalink() . 'themes', 'label' => __('Themes', 'imea')));
+			$ret[] = array('url' => sprintf('%s%s', get_permalink(), slugify($page_data->term->term)),
+						'label' => $page_data->term->term);
+		}
+		$ret = array(array('url' => get_permalink(), 'label' => $post->post_title));
+		if($page_data->term) {
+			$ret[] = array('url' => sprintf('%s%s', get_permalink(), slugify($page_data->term->term)),
+						'label' => $page_data->term->term);
+				$tab_title = ucfirst($tab);
+				switch(strtolower($tab)) {
+					case 'cases':
+						$tab_title = 'Court decisions';
+						break;
+					case 'national-plans':
+						$tab_title = 'National plans';
+						break;
+					case 'ramsar':
+						$tab_title = 'Ramsar sites';
+						break;
+				}
+				$ret[] = array('label' => $tab_title);
+		}
+		return $ret;
 	}
 
 
@@ -63,7 +125,7 @@ class Thesaurus extends imea_page_base_page {
 	function get_themes() {
 		global $wpdb;
 		$substantive = $wpdb->get_results('SELECT * FROM voc_concept WHERE id_source = 9 AND top_concept = 1 AND substantive = 1 ORDER BY `order` ASC');
-		$generic = $wpdb->get_results('SELECT * FROM voc_concept WHERE id_source = 9 top_concept = 1 AND substantive = 0 ORDER BY `order` ASC');
+		$generic = $wpdb->get_results('SELECT * FROM voc_concept WHERE id_source = 9 AND top_concept = 1 AND substantive = 0 ORDER BY `order` ASC');
 		return array('substantive' => $substantive, 'generic' => $generic);
 	}
 
@@ -289,14 +351,33 @@ class Thesaurus extends imea_page_base_page {
 	/**
 	 * @return id_term was set on GET but with invalid ID
 	 */
-	function is_404() {
-		global $wp_query, $page_data;
-		if(is_request_variable('id_term') && $page_data->term === NULL) {
-			$wp_query->set_404();
-			require TEMPLATEPATH.'/404.php';
-			return TRUE;
+	function check_404() {
+		global $wp_query;
+		$theme = get_request_variable('theme');
+		$id_term = get_request_variable('id_term');
+		$term_slug = get_request_variable('term_slug');
+		if(!empty($theme)) {
+			$id = $this->get_term_id_by_slug($theme);
+			if(empty($id)) {
+				$wp_query->set_404();
+				require TEMPLATEPATH.'/404.php';
+				exit;
+			}
+		} else if (!empty($id_term)) {
+			$term = $this->get_term($id_term);
+			if(empty($term)) {
+				$wp_query->set_404();
+				require TEMPLATEPATH.'/404.php';
+				exit;
+			}
+		} else if (!empty($term_slug)) {
+			$id = $this->get_term_id_by_slug($term_slug);
+			if(empty($id)) {
+				$wp_query->set_404();
+				require TEMPLATEPATH.'/404.php';
+				exit;
+			}
 		}
-		return FALSE;
 	}
 
 

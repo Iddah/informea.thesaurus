@@ -1,10 +1,42 @@
 <?php
 
 require_once WP_PLUGIN_DIR . '/imea_ai/imea.php';
-require_once WP_PLUGIN_DIR . '/informea/imea.php';
 require_once WP_PLUGIN_DIR . '/thesaurus/thesaurus.php';
 
 class thesaurus_test extends InforMEABaseTest {
+
+	function test_get_term_id_by_slug() {
+		global $wpdb;
+		$title = 'test OnE';
+		$voc_source = $this->create_voc_source();
+		$wpdb->insert('voc_concept', array(
+				'term' => $title,
+				'id_source' => $voc_source->id,
+				'top_concept' => 1,
+				'popularity' => 1,
+				'order' => 1,
+				'substantive' => 1
+		));
+		$term = $wpdb->get_row('SELECT * FROM voc_concept LIMIT 1');
+
+		$ob = new Thesaurus();
+		$id = $ob->get_term_id_by_slug(slugify($title));
+		$this->assertEquals(1, $id);
+
+		return;
+		$title = 'term 2';
+		$wpdb->insert('voc_concept', array(
+				'term' => $title,
+				'id_source' => $voc_source->id,
+				'top_concept' => 1,
+				'popularity' => 1,
+				'order' => 1,
+				'substantive' => 1
+		));
+		$term = $wpdb->get_row('SELECT * FROM voc_concept LIMIT 1, 1');
+		$id = $ob->get_term_id_by_slug(slugify($title));
+		$this->assertEquals(2, $id);
+	}
 
 
 	function test_find_term() {
