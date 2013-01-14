@@ -71,37 +71,6 @@ class Thesaurus extends imea_page_base_page {
 	}
 
 
-	function get_breadcrumbtrail() {
-		global $post, $page_data, $tab;
-		$theme = get_request_variable('theme');
-		if(!empty($theme)) {
-			$ret = array(array('url' => get_permalink(), 'label' => $post->post_title));
-			$ret = array(array('url' => get_permalink() . 'themes', 'label' => __('Themes', 'imea')));
-			$ret[] = array('url' => sprintf('%s%s', get_permalink(), slugify($page_data->term->term)),
-						'label' => $page_data->term->term);
-		}
-		$ret = array(array('url' => get_permalink(), 'label' => $post->post_title));
-		if($page_data->term) {
-			$ret[] = array('url' => sprintf('%s%s', get_permalink(), slugify($page_data->term->term)),
-						'label' => $page_data->term->term);
-				$tab_title = ucfirst($tab);
-				switch(strtolower($tab)) {
-					case 'cases':
-						$tab_title = 'Court decisions';
-						break;
-					case 'national-plans':
-						$tab_title = 'National plans';
-						break;
-					case 'ramsar':
-						$tab_title = 'Ramsar sites';
-						break;
-				}
-				$ret[] = array('label' => $tab_title);
-		}
-		return $ret;
-	}
-
-
 	function _get_details() {
 		global $wpdb;
 		$all = $wpdb->get_results(
@@ -393,25 +362,6 @@ class Thesaurus extends imea_page_base_page {
 		return '';
 	}
 
-
-	/**
-	 * Called statically by wordpress framework
-	 */
-	function breadcrumbtrail() {
-		global $post, $id_term, $page_data;
-		$tpl = " &raquo; <a href='%s'%s>%s</a>";
-		$ret = '';
-		if($post !== NULL) {
-			if($id_term !== NULL) {
-				$ret = sprintf($tpl, get_permalink(), '', $post->post_title);
-				$ret .= " &raquo; <span class='current'>{$page_data->term->term}</span>";
-			} else {
-				$ret = " &raquo; <span class='current'>{$post->post_title}</span>";
-			}
-		}
-
-		return $ret;
-	}
 
 	function get_synonyms($id_concept = NULL, $filter = NULL) {
 		global $wpdb;
