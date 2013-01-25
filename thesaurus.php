@@ -1168,7 +1168,7 @@ class Thesaurus extends imea_page_base_page {
 	 */
 	function get_geg_focus_terms() {
 		global $wpdb;
-		return $wpdb->get_results("SELECT a.* FROM voc_concept a INNER JOIN voc_source b ON a.id_source = b.id WHERE b.name='GEG'");
+		return $wpdb->get_results("SELECT a.* FROM voc_concept a INNER JOIN voc_source b ON a.id_source = b.id WHERE b.name='GEG' ORDER BY a.term");
 	}
 
 	function get_ecolex_terms() {
