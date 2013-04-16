@@ -98,7 +98,7 @@ class Thesaurus extends imea_page_base_page {
         return array('substantive' => $substantive, 'generic' => $generic);
     }
 
-    function get_top_concepts() {
+    static function get_top_concepts() {
         global $wpdb;
         return $wpdb->get_results("SELECT * FROM voc_concept WHERE id_source = 9 AND top_concept = 1 ORDER BY `order` ASC ");
     }
