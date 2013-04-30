@@ -278,17 +278,17 @@ class Thesaurus extends imea_page_base_page {
         return 'tabular' == get_request_variable('expand', 'str');
     }
 
-    function get_alphabet_letters() {
+    static function get_alphabet_letters() {
         global $wpdb;
         $sql = "SELECT DISTINCT(UPPER(SUBSTR(term, 1, 1))) AS letter FROM voc_concept WHERE id_source = 9 ORDER BY letter";
         return $wpdb->get_results($sql);
     }
 
 
-    function index_alphabetical() {
+    static function index_alphabetical() {
         global $wpdb;
         $ret = array();
-        $letters = $this->get_alphabet_letters();
+        $letters = self::get_alphabet_letters();
         foreach ($letters as $ob) {
             $sql = $wpdb->prepare("SELECT * FROM voc_concept WHERE id_source = 9 AND UPPER(SUBSTR(term, 1, 1)) = %s ORDER BY term", $ob->letter);
             $ret[$ob->letter] = $wpdb->get_results($sql);
@@ -1278,7 +1278,7 @@ class Thesaurus extends imea_page_base_page {
                         'id_concept' => $this->insert_id,
                         'target_term' => $related_term,
                         'relation' => 3,
-                        'rec_created' => $rec_updated,
+                        'rec_created' => $rec_created,
                         'rec_author' => $user,
                     )
                 );
