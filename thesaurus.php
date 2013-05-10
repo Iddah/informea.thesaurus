@@ -387,57 +387,6 @@ class Thesaurus extends imea_page_base_page {
     }
 
 
-    function csv_format_cell($value, $quot = '"', $sep = ',') {
-        $value = str_replace($quot, $quot . $quot, $value);
-        if (strchr($value, $sep) !== FALSE || strchr($value, $quot) !== FALSE || strchr($value, "\n") !== FALSE) {
-            $value = $quot . $value . $quot;
-        }
-        return $value;
-    }
-
-    function csv_write_row($term, $level, $max_level, $sep = ',') {
-        $ret = '';
-        for ($i = 0; $i < $level; $i++) {
-            $ret .= $sep;
-        } // Prefix padding
-        $ret .= $this->csv_format_cell($term->term, $sep);
-        for ($i = 0; $i < $max_level - $level; $i++) {
-            $ret .= $sep;
-        } // Suffix padding
-
-        $related_terms_str = '';
-        $related_terms = $this->get_related_terms($term->term);
-        $c = count($related_terms);
-        foreach ($related_terms as $idx => $related_term) {
-            if ($idx > 0) {
-                $related_terms_str .= ' ';
-            }
-            $related_terms_str .= $related_term->term;
-            if ($idx < $c - 1) {
-                $related_terms_str .= $sep;
-            }
-        }
-        $related_terms_str = str_replace('"', '""', $related_terms_str);
-
-        $syonyms_terms_str = '';
-        $synonyms = $this->get_synonyms($term->id);
-        $c = count($synonyms);
-        foreach ($synonyms as $idx => $synonym) {
-            if ($idx > 0) {
-                $syonyms_terms_str .= ' ';
-            }
-            $syonyms_terms_str .= $synonym->synonym;
-            if ($idx < $c - 1) {
-                $syonyms_terms_str .= $sep;
-            }
-        }
-        $syonyms_terms_str = str_replace('"', '""', $syonyms_terms_str);
-
-        $ret .= $term->tag . $sep . '"' . $syonyms_terms_str . '"' . $sep . '"' . $related_terms_str . '"' . $sep . "\n"; // TODO
-        return $ret;
-    }
-
-
     function get_related_terms($id) {
         global $wpdb;
         $sql = $wpdb->prepare("
@@ -450,7 +399,7 @@ class Thesaurus extends imea_page_base_page {
     }
 
 
-    function get_narrower_recursive($parent, $level, $callback) {
+    static function get_narrower_recursive($parent, $level, $callback) {
         global $wpdb;
         $sql = "SELECT * FROM voc_concept WHERE id IN
 				(
@@ -463,7 +412,7 @@ class Thesaurus extends imea_page_base_page {
         $children = $wpdb->get_results($sql);
         foreach ($children as $child) {
             $callback($child, $level + 1);
-            $this->get_narrower_recursive($child, $level + 1, $callback);
+            self::get_narrower_recursive($child, $level + 1, $callback);
         }
     }
 
@@ -1371,7 +1320,7 @@ class Thesaurus extends imea_page_base_page {
 
     function voc_save_theme_sort_group() {
         global $wpdb;
-        $themes = $this->get_top_concepts();
+        $themes = self::get_top_concepts();
         $this->actioned = TRUE;
         foreach ($themes as $term) {
             $order = get_request_value('theme-sort-' . $term->id, 0);
@@ -1633,4 +1582,101 @@ class Thesaurus extends imea_page_base_page {
         $this->success = true;
         return $term;
     }
+
+
+    static function generate_download_csv() {
+        $language = get_request_value('lang', 'en');
+        $separator = ('en' == $language) ? ',' : ';';
+        $themes = self::get_top_concepts();
+        // Find out the maximul depth level for terms
+        $max_level = 0;
+        $level = 0;
+        foreach ($themes as $theme) {
+            self::get_narrower_recursive($theme, $level, function ($level) {
+                global $max_level;
+                if ($level > $max_level) {
+                    $max_level = $level;
+                }
+            });
+        }
+        $max_level++;
+
+        // Generate the CSV header
+        $columns = array();
+        for ($i = 0; $i < $max_level; $i++) {
+            $columns[] = 'Term L' . ($i + 1);
+        }
+        $columns[] = 'Term short version';
+        $columns[] = 'Synonyms';
+        $columns[] = 'Related terms';
+
+        echo implode($separator, $columns);
+        echo "\n";
+        // Header done, put the themes
+        // First get the terms to find out the maximum depth level
+        $level = 0;
+        foreach ($themes as $theme) {
+            echo self::csv_write_row($theme, $level, $max_level, $separator);
+            // Write their children
+            $level = 0;
+            self::get_narrower_recursive($theme, $level,
+                function ($term, $level) use ($max_level, $separator) {
+                    echo self::csv_write_row($term, $level, $max_level, $separator);
+                }
+            );
+        }
+    }
+
+
+    function csv_format_cell($value, $quot = '"', $sep = ',') {
+        $value = str_replace($quot, $quot . $quot, $value);
+        if (strchr($value, $sep) !== FALSE || strchr($value, $quot) !== FALSE || strchr($value, "\n") !== FALSE) {
+            $value = $quot . $value . $quot;
+        }
+        return $value;
+    }
+
+
+    static function csv_write_row($term, $level, $max_level, $sep = ',') {
+        $ret = '';
+        for ($i = 0; $i < $level; $i++) {
+            $ret .= $sep;
+        } // Prefix padding
+        $ret .= self::csv_format_cell($term->term, $sep);
+        for ($i = 0; $i < $max_level - $level; $i++) {
+            $ret .= $sep;
+        } // Suffix padding
+
+        $related_terms_str = '';
+        $related_terms = self::get_related_terms($term->term);
+        $c = count($related_terms);
+        foreach ($related_terms as $idx => $related_term) {
+            if ($idx > 0) {
+                $related_terms_str .= ' ';
+            }
+            $related_terms_str .= $related_term->term;
+            if ($idx < $c - 1) {
+                $related_terms_str .= $sep;
+            }
+        }
+        $related_terms_str = str_replace('"', '""', $related_terms_str);
+
+        $syonyms_terms_str = '';
+        $synonyms = self::get_synonyms($term->id);
+        $c = count($synonyms);
+        foreach ($synonyms as $idx => $synonym) {
+            if ($idx > 0) {
+                $syonyms_terms_str .= ' ';
+            }
+            $syonyms_terms_str .= $synonym->synonym;
+            if ($idx < $c - 1) {
+                $syonyms_terms_str .= $sep;
+            }
+        }
+        $syonyms_terms_str = str_replace('"', '""', $syonyms_terms_str);
+
+        $ret .= $term->tag . $sep . '"' . $syonyms_terms_str . '"' . $sep . '"' . $related_terms_str . '"' . $sep . "\n"; // TODO
+        return $ret;
+    }
+
 }
