@@ -1628,7 +1628,7 @@ class Thesaurus extends imea_page_base_page {
             $level = 0;
             self::get_narrower_recursive($theme, $level,
                 function ($term, $level) use ($max_level, $separator) {
-                    echo self::csv_write_row($term, $level, $max_level, $separator);
+                    echo Thesaurus::csv_write_row($term, $level, $max_level, $separator);
                 }
             );
         }
