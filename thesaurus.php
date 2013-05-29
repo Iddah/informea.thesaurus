@@ -400,6 +400,13 @@ class Thesaurus extends imea_page_base_page {
 
 
     static function get_narrower_recursive($parent, $level, $callback) {
+        static $counter = 0;
+        $counter += 1;
+        if($counter > 4000) {
+            die(sprintf('Recursive protection activated. Vocabulary has infinite loops. Died on %s, level:%s',
+                $parent, $level)
+            );
+        }
         global $wpdb;
         $sql = "SELECT * FROM voc_concept WHERE id IN
 				(
